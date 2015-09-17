@@ -19,11 +19,11 @@ namespace ServiceBusSenderClient
             if (Console.ReadKey().Key == ConsoleKey.Y)
             {
                 var queuename = ConfigurationManager.AppSettings["QueueName"];
-                int sessionPrefix = 0;
-                while (sessionPrefix < 10)
+                int sessionprefix = 0;
+                while (sessionprefix < 10)
                 {
-                    sessionPrefix++;
-                    var sessionid = String.Format("SampleSession_{0}", sessionPrefix.ToString("##"));
+                    sessionprefix++;
+                    var sessionid = String.Format("{0}-{1}", queuename, sessionprefix.ToString("##"));
 
                     Console.WriteLine(String.Format("Sending message to queue {0} with sessionid {1} started.", queuename, sessionid));
                     SendMessages(queuename, sessionid);

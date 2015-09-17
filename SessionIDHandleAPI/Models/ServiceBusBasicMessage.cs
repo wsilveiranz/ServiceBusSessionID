@@ -56,6 +56,20 @@ namespace SessionIDHandleAPI.Models
         //
         //   T:System.ArgumentException:
         //     Thrown if the message identifier is null or exceeds 128 characters in length.
+        //
+        // Summary:
+        //     Gets the lock token assigned by Service Bus to this message.
+        //
+        // Returns:
+        //     The lock token assigned by Service Bus to this message.
+        //
+        // Exceptions:
+        //   T:System.ObjectDisposedException:
+        //     Thrown if the message is in disposed state.
+        //
+        //   T:System.InvalidOperationException:
+        //     Thrown if the message was not received from the ServiceBus.
+        public Guid LockToken { get; set; }
         public string MessageId { get; set; }
         //
         // Summary:
@@ -90,6 +104,7 @@ namespace SessionIDHandleAPI.Models
             ContentType = message.ContentType;
             CorrelationId = message.CorrelationId;
             Label = message.Label;
+            LockToken = message.LockToken;
             MessageId = message.MessageId;
             Properties = message.Properties;
             SessionId = message.SessionId;

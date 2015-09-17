@@ -15,6 +15,11 @@ namespace SessionIDHandleAPI.Controllers
 {
     public class SessionIDHandlerController : ApiController
     {
+        /// <summary>
+        /// Polling Trigger to get next session available and consume all associated messages.
+        /// </summary>
+        /// <param name="triggerState">Current State of the trigger State</param>
+        /// <returns>Returns a response object containing an Array of Service Bus Messages.</returns>
         [Trigger(TriggerType.Poll, typeof(ServiceBusBasicMessageResult))]
         [Metadata("GetSessionMessages", "Gets all messages for the next available session.")]
         [HttpGet]
@@ -44,6 +49,7 @@ namespace SessionIDHandleAPI.Controllers
                         }
                         catch (Exception ex)
                         {
+                            //temporary - was having trouble consuming messages from the queue.
                             message.DeadLetter("Failed Processing", ex.Message);
                         }
 
@@ -67,7 +73,11 @@ namespace SessionIDHandleAPI.Controllers
             }
 
         }
-
+        /// <summary>
+        /// Gets the list of Messages Available
+        /// </summary>
+        /// <remarks>Created for Debug purposes</remarks>
+        /// <returns>An string array of session IDs.</returns>
         [Metadata("GetAvailableSessions", "Gets a list of available sessions.")]
         [Route("api/SessionIDHandler/sessions")]
         public IEnumerable<string> GetAvailableSessions()

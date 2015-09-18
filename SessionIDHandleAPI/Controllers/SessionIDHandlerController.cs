@@ -57,7 +57,7 @@ namespace SessionIDHandleAPI.Controllers
                             result.Add(new ServiceBusBasicMessage(message));
                             
                             stateWriter.WriteLine(String.Format("Message {0} consumed.", message.MessageId));
-                            message.Complete();
+                        //    message.Complete();
                         }
                         catch (Exception ex)
                         {
@@ -121,7 +121,7 @@ namespace SessionIDHandleAPI.Controllers
                         stateWriter.WriteLine(String.Format("Message {0} consumed.", message.MessageId));
                         stateWriter.Flush();
                         nextSession.SetState(state);
-                        message.Complete();
+                    //    message.Complete();
                     }
                     catch (Exception ex)
                     {
@@ -171,27 +171,27 @@ namespace SessionIDHandleAPI.Controllers
             return result;
         }
 
-        //[Metadata("CompleteMessage", "Completes a message after processing.")]
-        //[HttpPut]
-        //public HttpResponseMessage CompleteMessage(ServiceBusBasicMessage message)
-        //{
-        //    try
-        //    {
-        //        var queuename = ConfigurationManager.AppSettings["QueueName"];
-        //        var queueClient = QueueClient.Create(queuename);
-        //        var session = queueClient.AcceptMessageSession(message.SessionId);
-        //        session.Complete(message.LockToken);
-        //        session.Close();
-        //        queueClient.Close();
-        //        return new HttpResponseMessage(HttpStatusCode.OK);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        var result = new HttpResponseMessage(HttpStatusCode.BadRequest);
-        //        result.ReasonPhrase = String.Format("An error occurred while completing the message. {0}", ex.Message);
-        //        return result;
-        //    }
-        //}
+        [Metadata("CompleteMessage", "Completes a message after processing.")]
+        [HttpPut]
+        public HttpResponseMessage CompleteMessage(Guid token)
+        {
+            
+            try
+            {
+                var queuename = ConfigurationManager.AppSettings["QueueName"];
+                var queueClient = QueueClient.Create(queuename);
+                queueClient.Complete(token);
+        
+                queueClient.Close();
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            }
+            catch (Exception ex)
+            {
+                var result = new HttpResponseMessage(HttpStatusCode.BadRequest);
+                result.ReasonPhrase = String.Format("An error occurred while completing the message. {0}", ex.Message);
+                return result;
+            }
+        }
 
 
 

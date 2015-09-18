@@ -68,7 +68,7 @@ namespace ServiceBusSenderClient
                             HandleTransientErrors(e);
                         }
                     }
-                    Console.WriteLine(string.Format("Message sent: Id = {0}, Body = {1}", message.MessageId, message.GetBody<string>()));
+                    Console.WriteLine(string.Format("Message sent: Id = {0}", message.MessageId));
                     break;
                 }
             }
@@ -128,6 +128,7 @@ namespace ServiceBusSenderClient
             };
         
             BrokeredMessage message = new BrokeredMessage(sampleMessage);
+            message.ContentType = sampleMessage.GetType().AssemblyQualifiedName;
             message.MessageId = messageId;
             message.SessionId = sessionid;
             return message;

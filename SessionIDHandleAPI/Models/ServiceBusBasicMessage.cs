@@ -97,7 +97,7 @@ namespace SessionIDHandleAPI.Models
         //     Thrown if the message is in disposed state.
         public string SessionId { get; set; }
 
-        public string Content { get; set; }
+        public Object Content { get; set; }
 
         public ServiceBusBasicMessage()
         {
@@ -119,7 +119,8 @@ namespace SessionIDHandleAPI.Models
             var stream = message.GetBody<Stream>();
             DataContractSerializer serializer = new DataContractSerializer(bodyType);
             XmlDictionaryReader reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
-            Content = JsonConvert.SerializeObject(serializer.ReadObject(reader));
+            //Content = JsonConvert.SerializeObject(serializer.ReadObject(reader));
+            Content = serializer.ReadObject(reader);
         }
     }
     public class ServiceBusBasicMessageResult

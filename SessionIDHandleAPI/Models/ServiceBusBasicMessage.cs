@@ -2,8 +2,11 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Web;
+using System.Xml;
 
 namespace SessionIDHandleAPI.Models
 {
@@ -108,7 +111,15 @@ namespace SessionIDHandleAPI.Models
             MessageId = message.MessageId;
             Properties = message.Properties;
             SessionId = message.SessionId;
-            Content = message.GetBody<string>();
+
+            if (String.IsNullOrEmpty(ContentType))
+                ContentType = "System.String";
+
+            Type bodyType = Type.GetType(ContentType, true);
+            var stream = message.GetBody<Stream>();
+            DataContractSerializer serializer = new DataContractSerializer(bodyType);
+            XmlDictionaryReader reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
+            Content = JsonConvert.SerializeObject(serializer.ReadObject(reader));
         }
     }
     public class ServiceBusBasicMessageResult
@@ -121,6 +132,44 @@ namespace SessionIDHandleAPI.Models
         public ServiceBusBasicMessageResult(List<ServiceBusBasicMessage> messages)
         {
             Messages = messages;
+        }
+    }
+    public class SessionSummary
+    {
+        public string SessionId { get; set; }
+        public String SessionState { get; set; }
+
+        public SessionSummary()
+        { }
+
+        public SessionSummary(MessageSession session)
+        {
+            SessionId = session.SessionId;
+            Stream state = session.GetState();
+            if (state != null)
+            {
+                StreamReader reader = new StreamReader(state);
+                SessionState = reader.ReadToEnd();
+            }
+            else
+            {
+                SessionState = String.Empty;
+            }
+
+        }       
+    }
+    public class SessionSummaryResult
+    {
+        public IEnumerable<SessionSummary> Sessions { get; set; }
+
+        public SessionSummaryResult()
+        {
+
+        }
+
+        public SessionSummaryResult(List<SessionSummary> sessions)
+        {
+            Sessions = sessions;
         }
     }
 

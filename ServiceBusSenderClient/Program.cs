@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ThirdPartyPayloads;
 
 namespace ServiceBusSenderClient
 {
@@ -116,7 +117,17 @@ namespace ServiceBusSenderClient
 
         private static BrokeredMessage CreateSampleMessage(string sessionid, string messageId, string messageBody)
         {
-            BrokeredMessage message = new BrokeredMessage(messageBody);
+            var sampleMessage = new SampleMessage();
+            sampleMessage.IntegerProperty = new Random().Next();
+            sampleMessage.BooleanProperty = (sampleMessage.IntegerProperty % 2 == 0);
+            sampleMessage.StringProperty = messageBody;
+            sampleMessage.SomeSubClass = new SubMessage()
+            {
+                SomeIntValue = new Random().Next(),
+                SomStringValue = messageBody
+            };
+        
+            BrokeredMessage message = new BrokeredMessage(sampleMessage);
             message.MessageId = messageId;
             message.SessionId = sessionid;
             return message;

@@ -10,6 +10,7 @@ using System.Net.Http;
 using System.Web.Http;
 using TRex.Metadata;
 using Microsoft.Azure.AppService.ApiApps.Service;
+using System.IO;
 
 namespace SessionIDHandleAPI.Controllers
 {
@@ -35,6 +36,14 @@ namespace SessionIDHandleAPI.Controllers
 
                 var nextSession = queueClient.AcceptMessageSession();
                 var sessionId = nextSession.SessionId;
+
+                Stream state = new MemoryStream();
+                StreamWriter stateWriter = new StreamWriter(state);
+                if (nextSession.GetState() != null)
+                {
+                    StreamReader reader = new StreamReader(nextSession.GetState());
+                    stateWriter.Write(reader.ReadToEnd());
+                }
                 BrokeredMessage message = null;
                 while (true)
                 {
@@ -46,6 +55,8 @@ namespace SessionIDHandleAPI.Controllers
                         try
                         {
                             result.Add(new ServiceBusBasicMessage(message));
+                            
+                            stateWriter.WriteLine(String.Format("Message {0} consumed.", message.MessageId));
                             message.Complete();
                         }
                         catch (Exception ex)
@@ -61,7 +72,9 @@ namespace SessionIDHandleAPI.Controllers
                         break;
                     }
                 }
-
+                stateWriter.Flush();
+                nextSession.SetState(state);
+                nextSession.Close();
                 queueClient.Close();
 
                 return Request.EventTriggered(new ServiceBusBasicMessageResult(result),
@@ -102,6 +115,13 @@ namespace SessionIDHandleAPI.Controllers
                     try
                     {
                         result = new ServiceBusBasicMessage(message);
+                        Stream state = (nextSession.GetState() == null) ? new MemoryStream() : nextSession.GetState();
+                        
+                        StreamWriter stateWriter = new StreamWriter(state);
+                        stateWriter.WriteLine(String.Format("Message {0} consumed.", message.MessageId));
+                        stateWriter.Flush();
+                        nextSession.SetState(state);
+                        message.Complete();
                     }
                     catch (Exception ex)
                     {
@@ -129,12 +149,12 @@ namespace SessionIDHandleAPI.Controllers
         /// </summary>
         /// <remarks>Created for Debug purposes</remarks>
         /// <returns>An string array of session IDs.</returns>
-        [Metadata("GetAvailableSessions", "Gets a list of available sessions.")]
+        [Metadata("GetAvailableSessions", "Gets a list of available sessions and state.")]
         [HttpGet]
         [Route("api/SessionIDHandler/sessions")]
-        public IEnumerable<string> GetAvailableSessions()
+        public SessionSummaryResult GetAvailableSessions()
         {
-            List<String> result = new List<string>();
+            List<SessionSummary> sessionsummaries = new List<SessionSummary>();
             var queuename = ConfigurationManager.AppSettings["QueueName"];
             var queueClient = QueueClient.Create(queuename);
 
@@ -142,34 +162,36 @@ namespace SessionIDHandleAPI.Controllers
 
             foreach (MessageSession messageSession in messageSessions)
             {
-                result.Add(messageSession.SessionId);
+                sessionsummaries.Add(new SessionSummary(messageSession));
             }
             
             queueClient.Close();
 
+            var result = new SessionSummaryResult(sessionsummaries);
             return result;
         }
-        [Metadata("CompleteMessage", "Completes a message after processing.")]
-        [HttpPut]
-        public HttpResponseMessage CompleteMessage(ServiceBusBasicMessage message)
-        {
-            try
-            {
-                var queuename = ConfigurationManager.AppSettings["QueueName"];
-                var queueClient = QueueClient.Create(queuename);
-                var session = queueClient.AcceptMessageSession(message.SessionId);
-                session.Complete(message.LockToken);
-                session.Close();
-                queueClient.Close();
-                return new HttpResponseMessage(HttpStatusCode.OK);
-            }
-            catch (Exception ex)
-            {
-                var result = new HttpResponseMessage(HttpStatusCode.BadRequest);
-                result.ReasonPhrase = String.Format("An error occurred while completing the message. {0}", ex.Message);
-                return result;
-            }
-        }
+
+        //[Metadata("CompleteMessage", "Completes a message after processing.")]
+        //[HttpPut]
+        //public HttpResponseMessage CompleteMessage(ServiceBusBasicMessage message)
+        //{
+        //    try
+        //    {
+        //        var queuename = ConfigurationManager.AppSettings["QueueName"];
+        //        var queueClient = QueueClient.Create(queuename);
+        //        var session = queueClient.AcceptMessageSession(message.SessionId);
+        //        session.Complete(message.LockToken);
+        //        session.Close();
+        //        queueClient.Close();
+        //        return new HttpResponseMessage(HttpStatusCode.OK);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        var result = new HttpResponseMessage(HttpStatusCode.BadRequest);
+        //        result.ReasonPhrase = String.Format("An error occurred while completing the message. {0}", ex.Message);
+        //        return result;
+        //    }
+        //}
 
 
 

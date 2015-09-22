@@ -73,6 +73,8 @@ namespace SessionIDHandleAPI.Models
         //
         //   T:System.InvalidOperationException:
         //     Thrown if the message was not received from the ServiceBus.
+        public long SequenceNumber { get; set; }
+
         public Guid LockToken { get; set; }
         public string MessageId { get; set; }
         //
@@ -109,10 +111,11 @@ namespace SessionIDHandleAPI.Models
             ContentType = message.ContentType;
             CorrelationId = message.CorrelationId;
             Label = message.Label;
-            LockToken = message.LockToken;
             MessageId = message.MessageId;
             Properties = message.Properties;
             SessionId = message.SessionId;
+            SequenceNumber = message.SequenceNumber;
+            LockToken = message.LockToken;
             LockedUntil = message.LockedUntilUtc;
 
             //if (String.IsNullOrEmpty(ContentType))

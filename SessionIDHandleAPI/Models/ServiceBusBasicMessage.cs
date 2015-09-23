@@ -1,5 +1,6 @@
 ﻿using Microsoft.ServiceBus.Messaging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -72,6 +73,8 @@ namespace SessionIDHandleAPI.Models
         //
         //   T:System.InvalidOperationException:
         //     Thrown if the message was not received from the ServiceBus.
+        public long SequenceNumber { get; set; }
+
         public Guid LockToken { get; set; }
         public string MessageId { get; set; }
         //
@@ -98,6 +101,7 @@ namespace SessionIDHandleAPI.Models
         public string SessionId { get; set; }
 
         public Object Content { get; set; }
+        public DateTime LockedUntil { get; private set; }
 
         public ServiceBusBasicMessage()
         {
@@ -107,20 +111,26 @@ namespace SessionIDHandleAPI.Models
             ContentType = message.ContentType;
             CorrelationId = message.CorrelationId;
             Label = message.Label;
-            LockToken = message.LockToken;
             MessageId = message.MessageId;
             Properties = message.Properties;
             SessionId = message.SessionId;
+            SequenceNumber = message.SequenceNumber;
+            LockToken = message.LockToken;
+            LockedUntil = message.LockedUntilUtc;
 
-            if (String.IsNullOrEmpty(ContentType))
-                ContentType = "System.String";
+            //if (String.IsNullOrEmpty(ContentType))
+            //    ContentType = "System.String";
 
-            Type bodyType = Type.GetType(ContentType, true);
+            //Type bodyType = Type.GetType(ContentType, true);
+            //var body = message.GetBody<JToken>();
+            //Content = body;
             var stream = message.GetBody<Stream>();
-            DataContractSerializer serializer = new DataContractSerializer(bodyType);
-            XmlDictionaryReader reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
+            StreamReader sr = new StreamReader(stream);
+            Content = sr.ReadToEnd();
+            //DataContractSerializer serializer = new DataContractSerializer(bodyType);
+            //XmlDictionaryReader reader = XmlDictionaryReader.CreateBinaryReader(stream, XmlDictionaryReaderQuotas.Max);
             //Content = JsonConvert.SerializeObject(serializer.ReadObject(reader));
-            Content = serializer.ReadObject(reader);
+            //Content = serializer.ReadObject(reader);
         }
     }
     public class ServiceBusBasicMessageResult

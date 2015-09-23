@@ -11,11 +11,14 @@ using System.Web.Http;
 using TRex.Metadata;
 using Microsoft.Azure.AppService.ApiApps.Service;
 using System.IO;
+using System.ComponentModel.DataAnnotations;
 
 namespace SessionIDHandleAPI.Controllers
 {
     public class SessionIDHandlerController : ApiController
     {
+
+        private QueueClient queueClient = QueueClient.Create(ConfigurationManager.AppSettings["QueueName"], ReceiveMode.PeekLock);
         /// <summary>
         /// Polling Trigger to get next session available and consume all associated messages.
         /// </summary>
@@ -25,18 +28,17 @@ namespace SessionIDHandleAPI.Controllers
         [Metadata("GetSessionMessages", "Gets all messages for the next available session.")]
         [HttpGet]
         [Route("api/SessionIDHandler/sessions/next/all")]
-        public HttpResponseMessage GetSessionMessages(string triggerState)
+        public async System.Threading.Tasks.Task<HttpResponseMessage> GetSessionMessages(string triggerState)
         {
             List<ServiceBusBasicMessage> result = new List<ServiceBusBasicMessage>();
-            var queuename = ConfigurationManager.AppSettings["QueueName"];
-            var queueClient = QueueClient.Create(queuename);
 
-            if (queueClient.GetMessageSessions().Count() > 0)
+            if ((await queueClient.GetMessageSessionsAsync()).Count() > 0)
             {
-
-                var nextSession = queueClient.AcceptMessageSession();
+                
+                var nextSession = await queueClient.AcceptMessageSessionAsync();
+                
                 var sessionId = nextSession.SessionId;
-
+                
                 Stream state = new MemoryStream();
                 StreamWriter stateWriter = new StreamWriter(state);
                 if (nextSession.GetState() != null)
@@ -47,17 +49,20 @@ namespace SessionIDHandleAPI.Controllers
                 BrokeredMessage message = null;
                 while (true)
                 {
-
+                    await nextSession.RenewLockAsync();
+                    
                     //receive messages from Queue
-                    message = nextSession.Receive(TimeSpan.FromSeconds(5));
+                    message = await nextSession.ReceiveAsync(TimeSpan.FromSeconds(5));
+
                     if (message != null)
                     {
                         try
                         {
                             result.Add(new ServiceBusBasicMessage(message));
-                            
                             stateWriter.WriteLine(String.Format("Message {0} consumed.", message.MessageId));
-                            message.Complete();
+                            message.Defer();
+                           // message.Complete();
+
                         }
                         catch (Exception ex)
                         {
@@ -75,8 +80,6 @@ namespace SessionIDHandleAPI.Controllers
                 stateWriter.Flush();
                 nextSession.SetState(state);
                 nextSession.Close();
-                queueClient.Close();
-
                 return Request.EventTriggered(new ServiceBusBasicMessageResult(result),
                                            sessionId,
                                            TimeSpan.FromSeconds(30));
@@ -97,30 +100,37 @@ namespace SessionIDHandleAPI.Controllers
         [Metadata("GetNextSessionMessage", "Gets a single message for the next available session.")]
         [HttpGet]
         [Route("api/SessionIDHandler/sessions/next/single")]
-        public HttpResponseMessage GetSessionNextMessage(string triggerState)
+        public async System.Threading.Tasks.Task<HttpResponseMessage> GetSessionNextMessage()
         {
             ServiceBusBasicMessage result = new ServiceBusBasicMessage();
-            var queuename = ConfigurationManager.AppSettings["QueueName"];
-            var queueClient = QueueClient.Create(queuename, ReceiveMode.PeekLock);
+
 
             if (queueClient.GetMessageSessions().Count() > 0)
             {
 
-                var nextSession = queueClient.AcceptMessageSession();
+                var nextSession = queueClient.AcceptMessageSession(TimeSpan.FromSeconds(5));
                 var sessionId = nextSession.SessionId;
+
                 BrokeredMessage message = null;
+
                 message = nextSession.Receive(TimeSpan.FromSeconds(5));
                 if (message != null)
                 {
                     try
                     {
                         result = new ServiceBusBasicMessage(message);
-                        Stream state = (nextSession.GetState() == null) ? new MemoryStream() : nextSession.GetState();
-                        
+                        Stream state = new MemoryStream();
                         StreamWriter stateWriter = new StreamWriter(state);
+                        if (nextSession.GetState() != null)
+                        {
+                            StreamReader reader = new StreamReader(nextSession.GetState());
+                            stateWriter.Write(reader.ReadToEnd());
+                        }
                         stateWriter.WriteLine(String.Format("Message {0} consumed.", message.MessageId));
                         stateWriter.Flush();
                         nextSession.SetState(state);
+                        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(50));
+                        //message.Defer();
                         message.Complete();
                     }
                     catch (Exception ex)
@@ -131,7 +141,7 @@ namespace SessionIDHandleAPI.Controllers
 
                 }
                 nextSession.Close();
-                queueClient.Close();
+
 
                 return Request.EventTriggered(result,
                                            sessionId,
@@ -139,7 +149,7 @@ namespace SessionIDHandleAPI.Controllers
             }
             else
             {
-                return Request.EventWaitPoll(retryDelay: null, triggerState: triggerState);
+                return Request.EventWaitPoll();
             }
 
         }
@@ -155,8 +165,6 @@ namespace SessionIDHandleAPI.Controllers
         public SessionSummaryResult GetAvailableSessions()
         {
             List<SessionSummary> sessionsummaries = new List<SessionSummary>();
-            var queuename = ConfigurationManager.AppSettings["QueueName"];
-            var queueClient = QueueClient.Create(queuename);
 
             var messageSessions = queueClient.GetMessageSessions();
 
@@ -164,36 +172,36 @@ namespace SessionIDHandleAPI.Controllers
             {
                 sessionsummaries.Add(new SessionSummary(messageSession));
             }
-            
-            queueClient.Close();
+
 
             var result = new SessionSummaryResult(sessionsummaries);
             return result;
         }
 
-        //[Metadata("CompleteMessage", "Completes a message after processing.")]
-        //[HttpPut]
-        //public HttpResponseMessage CompleteMessage(ServiceBusBasicMessage message)
-        //{
-        //    try
-        //    {
-        //        var queuename = ConfigurationManager.AppSettings["QueueName"];
-        //        var queueClient = QueueClient.Create(queuename);
-        //        var session = queueClient.AcceptMessageSession(message.SessionId);
-        //        session.Complete(message.LockToken);
-        //        session.Close();
-        //        queueClient.Close();
-        //        return new HttpResponseMessage(HttpStatusCode.OK);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        var result = new HttpResponseMessage(HttpStatusCode.BadRequest);
-        //        result.ReasonPhrase = String.Format("An error occurred while completing the message. {0}", ex.Message);
-        //        return result;
-        //    }
-        //}
+        [Metadata("CompleteMessage", "Completes a message after processing.")]
+        [SwaggerResponse(HttpStatusCode.OK, "Message Completed", typeof(BrokeredMessage))]
+        [HttpPut]
+        public HttpResponseMessage CompleteMessage(long sequenceNum, string sessionId)
+        {
+            var session = queueClient.AcceptMessageSession(sessionId);
+            try
+            {
+                var message = session.Receive(sequenceNum);
+                message.Complete();
+                //session.Complete(token);
 
+                session.Close();
 
+                return Request.CreateResponse<BrokeredMessage>(HttpStatusCode.OK, message);
+            }
+            catch (Exception ex)
+            {
+                var result = new HttpResponseMessage(HttpStatusCode.BadRequest);
+                result.ReasonPhrase = String.Format("An error occurred while completing the message. {0}", ex.Message);
+                session.Close();
+                return result;
+            }
+        }
 
     }
 }

@@ -61,7 +61,6 @@ namespace SessionIDHandleAPI.Controllers
                             result.Add(new ServiceBusBasicMessage(message));
                             stateWriter.WriteLine(String.Format("Message {0} consumed.", message.MessageId));
                             message.Defer();
-                           // message.Complete();
 
                         }
                         catch (Exception ex)
@@ -130,8 +129,7 @@ namespace SessionIDHandleAPI.Controllers
                         stateWriter.Flush();
                         nextSession.SetState(state);
                         await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(50));
-                        //message.Defer();
-                        message.Complete();
+                        message.Defer();
                     }
                     catch (Exception ex)
                     {

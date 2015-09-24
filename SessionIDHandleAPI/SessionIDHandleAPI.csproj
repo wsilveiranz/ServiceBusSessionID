@@ -133,6 +133,7 @@
   <ItemGroup>
     <Content Include="apiapp.json" />
     <Content Include="keys.config" />
+    <None Include="Properties\PublishProfiles\SessionIDHandleAPI%28researchresourcegroup%29 %282%29.pubxml" />
     <None Include="Properties\PublishProfiles\SessionIDHandleAPI%28ResearchResourceGroup%29.pubxml" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>

@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SessionIDHandleAPI", "Sessi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThirdPartyPayloads", "ThirdPartyPayloads\ThirdPartyPayloads.csproj", "{B68D03C5-B2B2-4767-AB8D-CCC42CDDF448}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceBusTopic", "ServiceBusTopic\ServiceBusTopic.csproj", "{FE5D3C64-A16F-47DE-8A04-A2A3DA9965B1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{B68D03C5-B2B2-4767-AB8D-CCC42CDDF448}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B68D03C5-B2B2-4767-AB8D-CCC42CDDF448}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B68D03C5-B2B2-4767-AB8D-CCC42CDDF448}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE5D3C64-A16F-47DE-8A04-A2A3DA9965B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE5D3C64-A16F-47DE-8A04-A2A3DA9965B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE5D3C64-A16F-47DE-8A04-A2A3DA9965B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE5D3C64-A16F-47DE-8A04-A2A3DA9965B1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

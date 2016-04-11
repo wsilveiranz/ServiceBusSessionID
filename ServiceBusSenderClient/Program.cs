@@ -10,14 +10,15 @@ using ThirdPartyPayloads;
 
 namespace ServiceBusSenderClient
 {
-    
+
     class Program
     {
 
         static void Main(string[] args)
         {
-            Console.WriteLine("Press [Y] key to generate sample messages, or any other key to exit.");
-            if (Console.ReadKey().Key == ConsoleKey.Y)
+            Console.WriteLine("Press [Q] key to generate sample  queue messages, [T] key to generate sample topic messages or any other key to exit.");
+            ConsoleKey option = Console.ReadKey().Key;
+            if (option == ConsoleKey.Q)
             {
                 var queuename = ConfigurationManager.AppSettings["QueueName"];
                 int sessionprefix = 0;
@@ -27,28 +28,31 @@ namespace ServiceBusSenderClient
                     var sessionid = String.Format("{0}-{1}", queuename, sessionprefix.ToString("##"));
 
                     Console.WriteLine(String.Format("Sending message to queue {0} with sessionid {1} started.", queuename, sessionid));
-                    SendMessages(queuename, sessionid);
+                    SendMessagesToQueue(queuename, sessionid);
                     Console.WriteLine(String.Format("Sending message to queue {0} with sessionid {1} completed.", queuename, sessionid));
                 }
                 //ReceiveMessages(queuename);
 
                 Console.ReadKey();
             }
+            else
+            {
+                if (option == ConsoleKey.T)
+                {
+                    var topicname = ConfigurationManager.AppSettings["TopicName"];
+
+                    SendMessageToTopic(topicname);
+                    Console.WriteLine(String.Format("Sending message to topic {0} with completed.", topicname));
+                    Console.ReadKey();
+                }
+            }
         }
 
-        private static void SendMessages(string QueueName, string sessionid)
+        private static void SendMessagesToQueue(string QueueName, string sessionid)
         {
             var queueClient = QueueClient.Create(QueueName);
 
-            List<BrokeredMessage> messageList = new List<BrokeredMessage>();
-
-            messageList.Add(CreateSampleMessage(sessionid, "1", "First message information"));
-            messageList.Add(CreateSampleMessage(sessionid, "2", "Second message information"));
-            messageList.Add(CreateSampleMessage(sessionid, "3", "Third message information"));
-
-            Console.WriteLine("\nSending messages to Queue...");
-
-            foreach (BrokeredMessage message in messageList)
+            foreach (BrokeredMessage message in SeedMessages(sessionid))
             {
                 while (true)
                 {
@@ -72,6 +76,49 @@ namespace ServiceBusSenderClient
                     break;
                 }
             }
+        }
+
+
+        private static void SendMessageToTopic(string topicname)
+        {
+            var topicClient = TopicClient.Create(topicname);
+
+            foreach (BrokeredMessage message in SeedMessages())
+            {
+                while (true)
+                {
+                    try
+                    {
+
+                        topicClient.Send(message);
+                    }
+                    catch (MessagingException e)
+                    {
+                        if (!e.IsTransient)
+                        {
+                            Console.WriteLine(e.Message);
+                            throw;
+                        }
+                        else
+                        {
+                            HandleTransientErrors(e);
+                        }
+                    }
+                    Console.WriteLine(string.Format("Message sent: Id = {0}", message.MessageId));
+                    break;
+                }
+            }
+        }
+
+        private static List<BrokeredMessage> SeedMessages(string sessionid = null)
+        {
+            List<BrokeredMessage> messageList = new List<BrokeredMessage>();
+
+            messageList.Add(CreateSampleMessage(sessionid, Guid.NewGuid().ToString(), "First message information"));
+            messageList.Add(CreateSampleMessage(sessionid, Guid.NewGuid().ToString(), "Second message information"));
+            messageList.Add(CreateSampleMessage(sessionid, Guid.NewGuid().ToString(), "Third message information"));
+
+            return messageList;
         }
 
         private static void ReceiveMessages(string queuename)
@@ -126,11 +173,13 @@ namespace ServiceBusSenderClient
                 SomeIntValue = new Random().Next(),
                 SomStringValue = messageBody
             };
-        
+
             BrokeredMessage message = new BrokeredMessage(sampleMessage);
             message.ContentType = sampleMessage.GetType().AssemblyQualifiedName;
+            if (sessionid != null)
+                message.SessionId = sessionid;
             message.MessageId = messageId;
-            message.SessionId = sessionid;
+            message.Properties.Add("MessageType", "SampleType");
             return message;
         }
 
